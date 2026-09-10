@@ -1,0 +1,87 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  FARMER
+  OFFICIAL
+}
+
+enum TokenStatus {
+  BOOKED
+  GATE_ENTRY
+  QUALITY_VERIFIED
+  WEIGHED
+  PAYMENT_DISPATCHED
+  CANCELLED
+}
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  phone       String   @unique
+  name        String
+  role        Role     @default(FARMER)
+  aadhaarNo   String?
+  panNo       String?
+  officialId  String?
+  bankAccount String?
+  tokens      Token[]
+  createdAt   DateTime @default(now())
+}
+
+model MandiCenter {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  city            String
+  state           String
+  district        String
+  latitude        Float
+  longitude       Float
+  dailyCapacityKg Int
+  tokens          Token[]
+  createdAt       DateTime @default(now())
+}
+
+model Token {
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  tokenNumber      String       @unique // e.g., #A-214
+  farmerId         String       @db.ObjectId
+  farmer           User         @relation(fields: [farmerId], references: [id])
+  mandiId          String       @db.ObjectId
+  mandi            MandiCenter  @relation(fields: [mandiId], references: [id])
+  cropGrade        CropGrade?
+  payout           PayoutTransaction?
+  cropType         String
+  quantityKg       Int
+  status           TokenStatus  @default(BOOKED)
+  slotTime         DateTime
+  assignedCounter  Int?
+  netWeightKg      Float?
+  totalPayoutAmount Float?
+  createdAt        DateTime     @default(now())
+}
+
+model CropGrade {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenId         String   @unique @db.ObjectId
+  token           Token   @relation(fields: [tokenId], references: [id])
+  grade           String
+  moisturePercent Float?
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+model PayoutTransaction {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenId           String   @unique @db.ObjectId
+  token             Token   @relation(fields: [tokenId], references: [id])
+  amount            Float
+  status            String   @default("PENDING")
+  transactionReference String?
+  createdAt         DateTime @default(now())
+}
